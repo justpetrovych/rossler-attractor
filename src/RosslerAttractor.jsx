@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react'
+import React, { useRef, useMemo, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
@@ -15,8 +15,9 @@ function rosslerStep(x, y, z, a, b, c, dt) {
 }
 
 function RosslerCurve({ a = 0.2, b = 0.2, c = 5.7 }) {
-  const pointsRef = useRef()
+  const geometryRef = useRef()
   const materialRef = useRef()
+  const [visiblePoints, setVisiblePoints] = useState(0)
 
   // Generate Rössler attractor points
   const points = useMemo(() => {
@@ -42,8 +43,25 @@ function RosslerCurve({ a = 0.2, b = 0.2, c = 5.7 }) {
     return pts
   }, [a, b, c])
 
-  // Animate color shift
+  // Animate drawing and color shift
   useFrame((state) => {
+    // Progressively draw the attractor
+    if (visiblePoints < points.length) {
+      setVisiblePoints(prev => Math.min(prev + 20, points.length))
+    } else {
+      // Loop the animation after a brief pause
+      const elapsed = state.clock.getElapsedTime()
+      if (elapsed % 30 < 0.1) {
+        setVisiblePoints(0)
+      }
+    }
+
+    // Update draw range
+    if (geometryRef.current) {
+      geometryRef.current.setDrawRange(0, visiblePoints)
+    }
+
+    // Animate color shift
     if (materialRef.current) {
       const time = state.clock.getElapsedTime()
       const hue = (time * 0.05) % 1
@@ -53,7 +71,7 @@ function RosslerCurve({ a = 0.2, b = 0.2, c = 5.7 }) {
 
   return (
     <line>
-      <bufferGeometry ref={pointsRef}>
+      <bufferGeometry ref={geometryRef}>
         <bufferAttribute
           attach="attributes-position"
           count={points.length}
