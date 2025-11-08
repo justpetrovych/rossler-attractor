@@ -14,10 +14,9 @@ function rosslerStep(x, y, z, a, b, c, dt) {
   return [x + dx, y + dy, z + dz]
 }
 
-function RosslerCurve({ a = 0.2, b = 0.2, c = 5.7 }) {
+function RosslerCurve({ a = 0.2, b = 0.2, c = 5.7, visiblePoints, setVisiblePoints }) {
   const geometryRef = useRef()
   const materialRef = useRef()
-  const [visiblePoints, setVisiblePoints] = useState(0)
 
   // Generate Rössler attractor points
   const points = useMemo(() => {
@@ -45,15 +44,9 @@ function RosslerCurve({ a = 0.2, b = 0.2, c = 5.7 }) {
 
   // Animate drawing and color shift
   useFrame((state) => {
-    // Progressively draw the attractor
+    // Progressively draw the attractor (run once)
     if (visiblePoints < points.length) {
       setVisiblePoints(prev => Math.min(prev + 20, points.length))
-    } else {
-      // Loop the animation after a brief pause
-      const elapsed = state.clock.getElapsedTime()
-      if (elapsed % 30 < 0.1) {
-        setVisiblePoints(0)
-      }
     }
 
     // Update draw range
@@ -84,7 +77,7 @@ function RosslerCurve({ a = 0.2, b = 0.2, c = 5.7 }) {
   )
 }
 
-function Scene() {
+function Scene({ visiblePoints, setVisiblePoints }) {
   const groupRef = useRef()
 
   // Slowly rotate the attractor
@@ -96,7 +89,7 @@ function Scene() {
 
   return (
     <group ref={groupRef}>
-      <RosslerCurve />
+      <RosslerCurve visiblePoints={visiblePoints} setVisiblePoints={setVisiblePoints} />
       <ambientLight intensity={0.5} />
       <pointLight position={[10, 10, 10]} intensity={1} />
     </group>
@@ -104,8 +97,16 @@ function Scene() {
 }
 
 export default function RosslerAttractor() {
+  const [visiblePoints, setVisiblePoints] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(true)
+
+  const handleRestart = () => {
+    setVisiblePoints(0)
+    setIsAnimating(true)
+  }
+
   return (
-    <div style={{ width: '100%', height: '600px', borderRadius: '12px', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '800px', borderRadius: '12px', overflow: 'hidden', position: 'relative' }}>
       <Canvas>
         <PerspectiveCamera makeDefault position={[25, 25, 25]} />
         <OrbitControls
@@ -114,8 +115,40 @@ export default function RosslerAttractor() {
           rotateSpeed={0.5}
           zoomSpeed={0.8}
         />
-        <Scene />
+        <Scene visiblePoints={visiblePoints} setVisiblePoints={setVisiblePoints} />
       </Canvas>
+
+      <button
+        onClick={handleRestart}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          padding: '12px 24px',
+          backgroundColor: 'rgba(102, 126, 234, 0.9)',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          fontWeight: '600',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          transition: 'all 0.3s ease',
+          zIndex: 10,
+        }}
+        onMouseEnter={(e) => {
+          e.target.style.backgroundColor = 'rgba(102, 126, 234, 1)'
+          e.target.style.transform = 'translateY(-2px)'
+          e.target.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.4)'
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.backgroundColor = 'rgba(102, 126, 234, 0.9)'
+          e.target.style.transform = 'translateY(0)'
+          e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+        }}
+      >
+        ↻ Restart Animation
+      </button>
     </div>
   )
 }
