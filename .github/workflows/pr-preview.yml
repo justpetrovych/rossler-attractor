@@ -34,8 +34,22 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Clone gh-pages branch
-          git clone --branch gh-pages https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git gh-pages-repo
+          # Check if gh-pages branch exists
+          if git ls-remote --heads https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git gh-pages | grep -q gh-pages; then
+            echo "gh-pages branch exists, cloning..."
+            git clone --branch gh-pages https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git gh-pages-repo
+          else
+            echo "gh-pages branch doesn't exist, creating..."
+            git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git gh-pages-repo
+            cd gh-pages-repo
+            git checkout --orphan gh-pages
+            git rm -rf . || true
+            echo "# GitHub Pages" > README.md
+            git add README.md
+            git commit -m "Initialize gh-pages branch"
+            git push origin gh-pages
+            cd ..
+          fi
 
           # Create or update PR directory
           mkdir -p gh-pages-repo/pr-${{ github.event.pull_request.number }}
