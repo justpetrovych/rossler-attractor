@@ -1,7 +1,9 @@
-import React, { useRef, useMemo, useState } from 'react'
+import React, { useRef, useMemo, useState, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
+
+const DEFAULT_PARAMS = { a: 0.2, b: 0.2, c: 5.7 }
 
 // Rössler attractor differential equations
 // dx/dt = -y - z
@@ -77,7 +79,7 @@ function RosslerCurve({ a = 0.2, b = 0.2, c = 5.7, visiblePoints, setVisiblePoin
   )
 }
 
-function Scene({ visiblePoints, setVisiblePoints }) {
+function Scene({ visiblePoints, setVisiblePoints, a, b, c }) {
   const groupRef = useRef()
 
   // Slowly rotate the attractor
@@ -89,7 +91,13 @@ function Scene({ visiblePoints, setVisiblePoints }) {
 
   return (
     <group ref={groupRef}>
-      <RosslerCurve visiblePoints={visiblePoints} setVisiblePoints={setVisiblePoints} />
+      <RosslerCurve
+        a={a}
+        b={b}
+        c={c}
+        visiblePoints={visiblePoints}
+        setVisiblePoints={setVisiblePoints}
+      />
       <ambientLight intensity={0.5} />
       <pointLight position={[10, 10, 10]} intensity={1} />
     </group>
@@ -98,11 +106,79 @@ function Scene({ visiblePoints, setVisiblePoints }) {
 
 export default function RosslerAttractor() {
   const [visiblePoints, setVisiblePoints] = useState(0)
-  const [isAnimating, setIsAnimating] = useState(true)
+  const [a, setA] = useState(DEFAULT_PARAMS.a)
+  const [b, setB] = useState(DEFAULT_PARAMS.b)
+  const [c, setC] = useState(DEFAULT_PARAMS.c)
+  const [debouncedParams, setDebouncedParams] = useState({ a: DEFAULT_PARAMS.a, b: DEFAULT_PARAMS.b, c: DEFAULT_PARAMS.c })
+
+  // Debounce parameter changes and restart animation
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedParams({ a, b, c })
+      setVisiblePoints(0) // Restart animation
+    }, 500)
+
+    return () => clearTimeout(timeout)
+  }, [a, b, c])
 
   const handleRestart = () => {
     setVisiblePoints(0)
-    setIsAnimating(true)
+  }
+
+  const handleReset = () => {
+    setA(DEFAULT_PARAMS.a)
+    setB(DEFAULT_PARAMS.b)
+    setC(DEFAULT_PARAMS.c)
+  }
+
+  const incrementParam = (param, setter, value) => {
+    setter(Number((value + 0.1).toFixed(1)))
+  }
+
+  const decrementParam = (param, setter, value) => {
+    setter(Number((value - 0.1).toFixed(1)))
+  }
+
+  const paramControlStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '8px',
+  }
+
+  const labelStyle = {
+    color: 'white',
+    fontSize: '14px',
+    fontWeight: '600',
+    minWidth: '50px',
+  }
+
+  const inputStyle = {
+    width: '70px',
+    padding: '6px 8px',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    color: 'white',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    borderRadius: '4px',
+    fontSize: '14px',
+    textAlign: 'center',
+    cursor: 'default',
+  }
+
+  const buttonStyle = {
+    width: '28px',
+    height: '28px',
+    backgroundColor: 'rgba(102, 126, 234, 0.8)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s ease',
   }
 
   return (
@@ -115,9 +191,139 @@ export default function RosslerAttractor() {
           rotateSpeed={0.5}
           zoomSpeed={0.8}
         />
-        <Scene visiblePoints={visiblePoints} setVisiblePoints={setVisiblePoints} />
+        <Scene
+          visiblePoints={visiblePoints}
+          setVisiblePoints={setVisiblePoints}
+          a={debouncedParams.a}
+          b={debouncedParams.b}
+          c={debouncedParams.c}
+        />
       </Canvas>
 
+      {/* Parameter Controls */}
+      <div style={{
+        position: 'absolute',
+        top: '20px',
+        left: '20px',
+        padding: '16px',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+        zIndex: 10,
+      }}>
+        <div style={{ color: 'white', fontSize: '16px', fontWeight: '700', marginBottom: '12px' }}>
+          Parameters
+        </div>
+
+        {/* Parameter a */}
+        <div style={paramControlStyle}>
+          <span style={labelStyle}>a =</span>
+          <button
+            style={buttonStyle}
+            onClick={() => decrementParam('a', setA, a)}
+            onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(102, 126, 234, 1)'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(102, 126, 234, 0.8)'}
+          >
+            −
+          </button>
+          <input
+            type="number"
+            value={a}
+            readOnly
+            style={inputStyle}
+            step="0.1"
+          />
+          <button
+            style={buttonStyle}
+            onClick={() => incrementParam('a', setA, a)}
+            onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(102, 126, 234, 1)'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(102, 126, 234, 0.8)'}
+          >
+            +
+          </button>
+        </div>
+
+        {/* Parameter b */}
+        <div style={paramControlStyle}>
+          <span style={labelStyle}>b =</span>
+          <button
+            style={buttonStyle}
+            onClick={() => decrementParam('b', setB, b)}
+            onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(102, 126, 234, 1)'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(102, 126, 234, 0.8)'}
+          >
+            −
+          </button>
+          <input
+            type="number"
+            value={b}
+            readOnly
+            style={inputStyle}
+            step="0.1"
+          />
+          <button
+            style={buttonStyle}
+            onClick={() => incrementParam('b', setB, b)}
+            onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(102, 126, 234, 1)'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(102, 126, 234, 0.8)'}
+          >
+            +
+          </button>
+        </div>
+
+        {/* Parameter c */}
+        <div style={paramControlStyle}>
+          <span style={labelStyle}>c =</span>
+          <button
+            style={buttonStyle}
+            onClick={() => decrementParam('c', setC, c)}
+            onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(102, 126, 234, 1)'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(102, 126, 234, 0.8)'}
+          >
+            −
+          </button>
+          <input
+            type="number"
+            value={c}
+            readOnly
+            style={inputStyle}
+            step="0.1"
+          />
+          <button
+            style={buttonStyle}
+            onClick={() => incrementParam('c', setC, c)}
+            onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(102, 126, 234, 1)'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(102, 126, 234, 0.8)'}
+          >
+            +
+          </button>
+        </div>
+
+        {/* Reset Button */}
+        <button
+          onClick={handleReset}
+          style={{
+            width: '100%',
+            marginTop: '12px',
+            padding: '8px 12px',
+            backgroundColor: 'rgba(118, 75, 162, 0.8)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(118, 75, 162, 1)'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(118, 75, 162, 0.8)'}
+        >
+          Reset to Default
+        </button>
+      </div>
+
+      {/* Restart Animation Button */}
       <button
         onClick={handleRestart}
         style={{
